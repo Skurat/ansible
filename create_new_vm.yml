@@ -11,7 +11,7 @@
       password: KpoJIik0139#
       validate_certs: no
       folder: /Datacenter 1/vm/
-      name: test_vm_host_debian9_2
+      name: "{{ HOST_NAME }}"
       datacenter: Datacenter 1
       state: poweredon
     #   datastore: HDD 1TB datastore1
@@ -20,13 +20,13 @@
     #   esxi_hostname: 192.168.0.103
     #   cluster: 192.168.0.103
       disk:
-        - size_gb: 20
+        - size_gb: "{{ DISK1 }}"
           type: thin
           datastore: Datacenter 1
       hardware:
-          memory_mb: 512
-          num_cpus: 2
-          num_cpu_cores_per_socket: 1
+          memory_mb: "{{ MEMORY_MB }}"
+          num_cpus: "{{ CPU_CORE }}"
+          num_cpu_cores_per_socket: "{{ CORE_PER_SOCKET }}"
       networks:
         - name: VM Network
       wait_for_ip_address: yes
