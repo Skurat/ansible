@@ -1,0 +1,34 @@
+---
+- hosts: localhost
+  gather_facts: false
+  connection: local
+
+  tasks:
+  - name: Create VM host
+    vmware_guest:
+      hostname: 192.168.0.250
+      username: administrator@r2d2.local
+      password: KpoJIik0139#
+      validate_certs: no
+      folder: /Datacenter 1/vm/
+      name: test_vm_host_debian9_2
+      datacenter: Datacenter 1
+      state: poweredon
+    #   datastore: HDD 1TB datastore1
+      template: tmpl_debian9
+    #   datacenter: Datacenter 1
+    #   esxi_hostname: 192.168.0.103
+    #   cluster: 192.168.0.103
+      disk:
+        - size_gb: 20
+          type: thin
+          datastore: Datacenter 1
+      hardware:
+          memory_mb: 512
+          num_cpus: 2
+          num_cpu_cores_per_socket: 1
+      networks:
+        - name: VM Network
+      wait_for_ip_address: yes
+    delegate_to: localhost
+    register: deploy

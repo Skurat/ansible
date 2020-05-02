@@ -1,0 +1,9 @@
+[srvrs]
+#jenkin-local            ansible_host=192.168.0.201 
+#openCart                ansible_host=192.168.0.163 ansible_port=22
+nginx-local             ansible_host=192.168.0.107
+
+[srvrs:vars]
+ansible_port    = 10022
+API_USER        = zabbix_automation
+API_PASS        = HerfKbwj46

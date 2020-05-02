@@ -1,0 +1,107 @@
+---
+- hosts: all
+  user: root
+  become: yes
+
+  tasks:
+  - name: Gather package facts
+    package_facts:
+      manager: auto
+  - set_fact:
+      zbx_url: http://192.168.0.200/
+      h_ip: "{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}"
+      h_hostname: "{{ hostvars[inventory_hostname]['ansible_hostname'] }}"
+
+  - name: Get info by hostname
+    local_action:
+      module: zabbix_host_info
+      server_url: "{{ zbx_url }}"
+      login_user: "{{ API_USER }}"
+      login_password: "{{ API_PASS }}"
+      host_name: "{{ h_hostname }}"
+      timeout: 10
+      exact_match: no
+    ignore_errors: yes
+    delegate_to: localhost
+    register: zbx_hostname
+
+  - name: Get info by ip
+    local_action:
+      module: zabbix_host_info
+      server_url: "{{ zbx_url }}"
+      login_user: "{{ API_USER }}"
+      login_password: "{{ API_PASS }}"
+      host_ip: "{{ h_ip }}"
+      timeout: 10
+      exact_match: no
+    ignore_errors: yes
+    delegate_to: localhost
+    when: zbx_hostname.ok is not defined
+    register: zbx_ip
+
+  - set_fact:
+      hname: "{{ 'Hostname=' + h_ip }}"
+      host_name: "{{ h_ip }}"
+      tls_a: "{{ zbx_ip.hosts[0].tls_accept | int }}"
+      tls_c: "{{ zbx_ip.hosts[0].tls_connect | int }}"
+      zbx_groups: "{{ zbx_groups | default([]) | union ([item.name]) }}"
+    with_items:
+      - "{{ zbx_ip.hosts[0].groups }}"
+    when: zbx_ip.ok is defined and zbx_ip.ok == true and zbx_hostname.ok is not defined
+
+
+  # - name: show
+  #   debug:
+  #     var: ansible_hostname
+  #   failed_when: pip is not defined
+
+  - set_fact:
+      hname: "{{ 'Hostname=' + h_hostname }}"
+      host_name: "{{ h_hostname }}"
+      tls_a: "{{ zbx_hostname.hosts[0].tls_accept | int }}"
+      tls_c: "{{ zbx_hostname.hosts[0].tls_connect | int }}"
+      zbx_groups: "{{ zbx_groups | default([]) | union ([item.name]) }}"
+      with_items:
+        - "{{ zbx_hostname.hosts[0].groups }}"
+    when: zbx_hostname.ok is defined and zbx_hostname.ok == true and zbx_ip.ok is not defined
+
+
+
+  - name: Move host to monitored by proxy
+    local_action:
+      module: zabbix_host
+      server_url: "{{ zbx_url }}"
+      login_user: "{{ API_USER }}"
+      login_password: "{{ API_PASS }}"
+      validate_certs: False
+      host_name: "{{ host_name }}"
+      # visible_name: "{{ h_hostname }}"
+      host_groups: "{{ zbx_groups }}"
+      # link_templates: "{{ zbx_tmpl }}"
+      tls_accept: "{{ tls_a }}"
+      tls_connect: "{{ tls_c }}"
+      proxy: zabbix-proxy
+    delegate_to: localhost
+    ignore_errors: yes
+    register: modify_zbx_host
+
+  - name: set new config to /etc/zabbix/zabbix_agent.conf
+    lineinfile:
+      path: /etc/zabbix/zabbix_agentd.conf
+      regexp: '{{ item.From }}'
+      line: '{{ item.To }}'
+    with_items:
+      - { From: '^Server\s?\=', To: 'Server=192.168.0.202,192.168.0.200' }
+      - { From: '^ServerActive\s?\=', To: 'ServerActive=192.168.0.202' }
+      - { From: '^Hostname\s?\=', To: "{{ hname }}" }
+    register: line
+
+  - name: Restart zabbix agent
+    service:
+      name: zabbix-agent
+      state: restarted
+    when: line.changed
+
+  - name: show
+    debug:
+      var: modify_zbx_host
