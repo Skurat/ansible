@@ -11,7 +11,7 @@
       password: KpoJIik0139#
       validate_certs: no
       folder: /Datacenter 1/vm/
-      name: "{{ HOST_NAME }}"
+      name: "{{ HOSTS }}"
       datacenter: Datacenter 1
       state: poweredon
     #   datastore: HDD 1TB datastore1
